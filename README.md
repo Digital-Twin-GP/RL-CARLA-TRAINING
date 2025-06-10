@@ -51,35 +51,54 @@ CarlaUE4.exe
 ./CarlaUE4.sh
 ```
 
-### 6. Running Python Scripts
+### 6. Running Project Modes
 
-Once `CarlaUE4` is running, you can execute any Python script in the project directory.
+Once `CarlaUE4` is running, you can execute any Python script in the project directory. The project supports three main modes:
 
-#### Example:
+#### 1. Normal Simulation Mode
+
+Runs the standard Carla simulation with the default agent.
+
 ```sh
-python carla_fuel_consumption_initial.py
+python main.py
 ```
 
-### 7. Testing the Trained Model
+#### 2. RL Training Mode
 
-To test the output model, run the following script:
+Trains a reinforcement learning agent for fuel efficiency.
+
+- **SAC (default):**
+  ```sh
+  python main.py --rl
+  ```
+- **DQN:**
+  ```sh
+  python main.py --rl --dqn
+  ```
+
+#### 3. Test Trained Model
+
+Tests a trained RL model against the BasicAgent.
+
 ```sh
-python carla_trained_model_test.py
+python main.py --test --model-path <path_to_model>
 ```
-Before running, update the `MODEL_PATH` variable in `carla_trained_model_test.py`:
-```python
-MODEL_PATH = 'models/Xception___-26.65max_-202.85avg_-331.95min__1741692714.model'  # Update with your model name
+Replace `<path_to_model>` with your trained model file, e.g.:
+```sh
+python main.py --test --model-path models/FuelOptimizer__1749141785.model
 ```
+
+---
 
 ## Viewing Model Logs with TensorBoard
 
-To visualize logs using TensorBoard, run the following command:
+To visualize logs using TensorBoard, run:
 
 ```sh
 tensorboard --logdir=logs/
 ```
 
-Then, open a web browser and visit:
+Then open your browser at:
 
 ```
 http://localhost:6006

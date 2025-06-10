@@ -1,7 +1,8 @@
 pygame
 numpy
-opencv-python
 tensorflow
 urllib3==1.26.15
 carla
 tqdm
+shapely
+networkx
