@@ -89,15 +89,16 @@ python main.py --test --model-path models/FuelOptimizer__1749141785.model
 ```
 #### 4. RL Inference Interface Mode
 
-Use this mode to run the RL inference interface as a standalone script. This allows you to get throttle predictions from a trained RL model (SAC by default, or DQN) using speed and acceleration as input. This is useful for distributed setups where CARLA and RL inference run on separate machines.
+Use this mode to run the RL inference script standalone. It predicts throttle values from a trained RL model (SAC by default, or DQN), based on speed and acceleration inputs.
 
 **Example usage:**
 
-```sh
-python rl_inference_interface.py --model_path <path_to_model> --agent_type <type> --speed <speed_value> --acceleration <acceleration_value>
+```bash
+python rl_inference_interface.py --model_path <path_to_model> --speed <speed_value> --acceleration <acceleration_value> --agent_type dqn
 ```
 
-Replace `<path_to_model>`, `<speed_value>`, and `<acceleration_value>` with your actual values.
+- Replace `<path_to_model>`, `<speed_value>`, and `<acceleration_value>` with your actual values.
+- `--agent_type` is optional (defaults to `sac`). Use `--agent_type dqn` if you want to switch to DQN.
 
 ---
 
