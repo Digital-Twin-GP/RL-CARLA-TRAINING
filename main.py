@@ -3,6 +3,8 @@ import logging
 from simulation.simulation import game_loop
 from rl.rl_training import rl_training_loop
 from simulation.testing import test_model
+from simulation.socket_server import socket_server
+
 
 def main():
     argparser = argparse.ArgumentParser(
@@ -80,6 +82,10 @@ def main():
     '--dqn',
     action='store_true',
     help='Use DQN agent instead of SAC (default: SAC)')
+    argparser.add_argument(
+        '--socket',
+        action='store_true',
+        help='Run simulation and serve data via TCP socket')
 
     args = argparser.parse_args()
     args.width, args.height = [int(x) for x in args.res.split('x')]
@@ -93,6 +99,8 @@ def main():
             test_model(args, args.model_path)
         elif args.rl:
             rl_training_loop(args)
+        elif args.socket:
+            socket_server(args)
         else:
             game_loop(args)
     except KeyboardInterrupt:
