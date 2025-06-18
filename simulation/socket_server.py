@@ -75,6 +75,13 @@ def socket_server(args):
         traffic_manager.set_global_distance_to_leading_vehicle(2.5)
         sim_world = client.load_world('Town04_Opt')
 
+        # Clean up all actors before starting
+        actors = sim_world.get_actors()
+        for actor in actors:
+            if actor.type_id.startswith('vehicle.') or actor.type_id.startswith('walker.') or actor.type_id.startswith('sensor.'):
+                actor.destroy()
+        time.sleep(1)  # Give CARLA a moment to clean up
+
         if args.sync:
             settings = sim_world.get_settings()
             settings.synchronous_mode = True
@@ -98,9 +105,6 @@ def socket_server(args):
         destination = carla.Location(x=-360.015564, y=5.184233, z=2)
         agent.set_destination(destination)
 
-        if args.num_cars > 0:
-            spawn_npc_vehicles(client, world.world, args.num_cars, world.player)
-
         clock = pygame.time.Clock()
 
         running = True
@@ -120,9 +124,22 @@ def socket_server(args):
                 world.render(display)
                 pygame.display.flip()
 
+                collision_happened = False
+                if world.collision_sensor.get_collision_history():
+                    collision_happened = True
+
+                if collision_happened:
+                    world.restart(args)
+                    agent = BehaviorAgent(world.player, behavior=args.behavior)
+                    agent.follow_speed_limits(True)
+                    agent.set_destination(random.choice(spawn_points).location)
+                    world.hud.notification("Collision! Restarted episode.", seconds=4.0)
+                    continue
+
                 if agent.done():
                     agent.set_destination(random.choice(spawn_points).location)
                     world.hud.notification("Target reached", seconds=4.0)
+                    print("The episode finished, searching for another target")
 
                 control = agent.run_step(debug=True)
                 control.manual_gear_shift = False

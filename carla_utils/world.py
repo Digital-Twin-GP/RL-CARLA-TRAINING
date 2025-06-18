@@ -67,7 +67,8 @@ class World(object):
             # spawn_point = self.player.get_transform()
             # spawn_point.location.z += 2.0
             # spawn_point.rotation.roll = 0.0
-            # spawn_point.rotation.pitch = 0.0
+            # spawn_point.rotation.pitch = 0.
+            self.destroy_sensors()
             self.destroy()
             spawn_point = carla.Transform(carla.Location(x=-13.6, y=5.8, z=11), carla.Rotation(yaw=180))
             spawn_points = self.map.get_spawn_points()
@@ -159,18 +160,23 @@ class World(object):
 
     def destroy_sensors(self):
         """Destroy sensors"""
-        self.camera_manager.sensor.destroy()
-        self.camera_manager.sensor = None
-        self.camera_manager.index = None
+        if self.camera_manager and self.camera_manager.sensor:
+            self.camera_manager.sensor.destroy()
+            self.camera_manager.sensor = None
+            self.camera_manager.index = None
+        if self.collision_sensor and self.collision_sensor.sensor:
+            self.collision_sensor.sensor.destroy()
+            self.collision_sensor.sensor = None
+        if self.lane_invasion_sensor and self.lane_invasion_sensor.sensor:
+            self.lane_invasion_sensor.sensor.destroy()
+            self.lane_invasion_sensor.sensor = None
+        if self.gnss_sensor and self.gnss_sensor.sensor:
+            self.gnss_sensor.sensor.destroy()
+            self.gnss_sensor.sensor = None
 
     def destroy(self):
         """Destroys all actors"""
-        actors = [
-            self.camera_manager.sensor,
-            self.collision_sensor.sensor,
-            self.lane_invasion_sensor.sensor,
-            self.gnss_sensor.sensor,
-            self.player]
-        for actor in actors:
-            if actor is not None:
-                actor.destroy()
+        self.destroy_sensors()
+        if self.player:
+            self.player.destroy()
+            self.player = None

@@ -3,7 +3,7 @@ import math
 import weakref
 import numpy as np
 import pygame
-from queue import Queue
+from queue import Queue, Full
 import carla
 from carla_utils.utils import get_actor_display_name
 
@@ -108,7 +108,7 @@ class CameraManager(object):
         self._parent = parent_actor
         self.hud = hud
         self.recording = False
-        self.imageQueue = Queue(); # Create a queue for camera images
+        self.imageQueue = Queue(maxsize=10) 
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
@@ -209,7 +209,15 @@ class CameraManager(object):
             array = array[:, :, :3]
             array = array[:, :, ::-1]
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-            self.imageQueue.put( image )
+            try:
+                self.imageQueue.put(image, block=False)
+            except Full:
+                # Drop oldest image if queue is full
+                try:
+                    self.imageQueue.get_nowait()
+                    self.imageQueue.put(image, block=False)
+                except Exception:
+                    pass
         if self.recording:
             image.save_to_disk('_out/%08d' % image.frame)
 
