@@ -6,6 +6,9 @@ import pygame
 from queue import Queue, Full
 import carla
 from carla_utils.utils import get_actor_display_name
+import base64
+import io
+from PIL import Image
 
 class CollisionSensor(object):
     """ Class for collision sensors"""
@@ -109,6 +112,7 @@ class CameraManager(object):
         self.hud = hud
         self.recording = False
         self.imageQueue = Queue(maxsize=10) 
+        self.last_image_b64 = None
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
@@ -209,6 +213,16 @@ class CameraManager(object):
             array = array[:, :, :3]
             array = array[:, :, ::-1]
             self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+
+            try:
+                pil_img = Image.fromarray(array)
+                buf = io.BytesIO()
+                pil_img.save(buf, format='JPEG')
+                img_bytes = buf.getvalue()
+                self.last_image_b64 = base64.b64encode(img_bytes).decode('utf-8')
+            except Exception as e:
+                self.last_image_b64 = None
+
             try:
                 self.imageQueue.put(image, block=False)
             except Full:
