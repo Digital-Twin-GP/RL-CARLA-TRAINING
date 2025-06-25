@@ -86,7 +86,8 @@ def collect_step_data(world, agent):
         "camera_image": camera_image,
         "nearby_vehicles": nearby_json,
         "environment": "Carla",
-        "mode": 1
+        "mode": 1,
+        "summary": False
     }
     return data
 
