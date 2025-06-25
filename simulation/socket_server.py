@@ -5,10 +5,15 @@ import ast
 import carla
 import random
 import time
+import numpy as np
+import math
 from carla_utils.hud import HUD, KeyboardControl
 from carla_utils.world import World
 from agents.behavior_agent import BehaviorAgent
 from carla_utils.utils import spawn_npc_vehicles
+# Add these imports for RL model support
+from rl.dqn_sac_agents import DQNAgent, SACAgent
+from tensorflow.keras.models import load_model
 
 collision_intensity = -1
 collision_flag = False
@@ -107,6 +112,31 @@ def socket_server(args):
 
     client_conn = None
 
+    # RL Model variables
+    rl_agent = None
+    use_rl_throttle = False
+    
+    # Initialize RL model if testing mode is enabled
+    if hasattr(args, 'test') and args.test:
+        use_rl_throttle = True
+        model_path = getattr(args, 'model_path', None)
+        if model_path:
+            try:
+                if hasattr(args, 'dqn') and args.dqn:
+                    rl_agent = DQNAgent()
+                    rl_agent.model = load_model(model_path)
+                    print(f"Loaded DQN model from {model_path}")
+                else:
+                    rl_agent = SACAgent()
+                    rl_agent.actor = load_model(model_path, compile=False)
+                    print(f"Loaded SAC model from {model_path}")
+            except Exception as e:
+                print(f"Failed to load RL model: {e}")
+                use_rl_throttle = False
+        else:
+            print("No model path provided for testing mode")
+            use_rl_throttle = False
+
     try:
         if args.seed:
             random.seed(args.seed)
@@ -145,11 +175,23 @@ def socket_server(args):
         agent.follow_speed_limits(True)  
 
         spawn_points = world.map.get_spawn_points()
-        destination = carla.Location(x=-360.015564, y=5.184233, z=2)
-        agent.set_destination(destination)
+        
+        # Set fixed start and end points if in test mode
+        if use_rl_throttle:
+            start_point = carla.Transform(carla.Location(x=-13.6, y=5.8, z=11), carla.Rotation(yaw=180))
+            end_point = carla.Location(x=-350.015564, y=5.184233, z=2)
+            world.player.set_transform(start_point)
+            agent.set_destination(end_point)
+            print("Test mode: Using fixed start and end points")
+        else:
+            destination = carla.Location(x=-360.015564, y=5.184233, z=2)
+            agent.set_destination(destination)
         
         if args.num_cars > 0:
-            spawn_npc_vehicles(client, world.world, 50, world.player)
+            if use_rl_throttle:
+                spawn_npc_vehicles(client, world.world, args.num_cars, world.player)
+            else:
+                spawn_npc_vehicles(client, world.world, 50, world.player)
 
         clock = pygame.time.Clock()   
 
@@ -187,17 +229,59 @@ def socket_server(args):
                     world.restart(args)
                     agent = BehaviorAgent(world.player, behavior=args.behavior)
                     agent.follow_speed_limits(True)
-                    agent.set_destination(random.choice(spawn_points).location)
+                    if use_rl_throttle:
+                        # Reset to start point in test mode
+                        start_point = carla.Transform(carla.Location(x=-13.6, y=5.8, z=11), carla.Rotation(yaw=180))
+                        end_point = carla.Location(x=-350.015564, y=5.184233, z=2)
+                        world.player.set_transform(start_point)
+                        agent.set_destination(end_point)
+                    else:
+                        agent.set_destination(random.choice(spawn_points).location)
                     world.hud.notification("Collision! Restarted episode.", seconds=4.0)
                     continue
 
                 if agent.done():
-                    agent.set_destination(random.choice(spawn_points).location)
-                    world.hud.notification("Target reached", seconds=4.0)
-                    print("The episode finished, searching for another target")
+                    if use_rl_throttle:
+                        print("Test completed - destination reached!")
+                        running = False
+                        break
+                    else:
+                        agent.set_destination(random.choice(spawn_points).location)
+                        world.hud.notification("Target reached", seconds=4.0)
+                        print("The episode finished, searching for another target")
 
                 control = agent.run_step(debug=True)
                 control.manual_gear_shift = False
+                
+                # Apply RL throttle if in test mode
+                if use_rl_throttle and rl_agent is not None:
+                    # Get current state
+                    v = world.player.get_velocity()
+                    kmh = 3.6 * math.sqrt(v.x**2 + v.y**2 + v.z**2)
+                    
+                    # Calculate acceleration
+                    last_velocity = getattr(world, "last_velocity", 0)
+                    last_update_time = getattr(world, "last_update_time", time.time())
+                    delta_time = time.time() - last_update_time
+                    acceleration = (kmh - last_velocity) / 3.6 / delta_time if delta_time > 0 else 0
+                    world.last_update_time = time.time()
+                    world.last_velocity = kmh
+                    
+                    # Get RL action
+                    state = np.array([kmh, acceleration], dtype=np.float32)
+                    if hasattr(args, 'dqn') and args.dqn:
+                        action = np.argmax(rl_agent.get_qs(state))
+                        throttle = [0.2, 0.5, 1.0][action]
+                    else:
+                        action = rl_agent.get_action(state, deterministic=True)
+                        throttle = float(action[0])
+                    
+                    # Don't apply throttle if braking
+                    if control.brake > 0.0:
+                        throttle = 0.0
+                    
+                    control.throttle = throttle
+
                 world.player.apply_control(control)
 
                 # Try to accept a client connection if not already connected

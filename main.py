@@ -95,12 +95,13 @@ def main():
     logging.info('listening to server %s:%s', args.host, args.port)
 
     try:
-        if args.test:
+        if args.socket:
+            socket_server(args)
+        elif args.test:
             test_model(args, args.model_path)
         elif args.rl:
             rl_training_loop(args)
-        elif args.socket:
-            socket_server(args)
+
         else:
             game_loop(args)
     except KeyboardInterrupt:
