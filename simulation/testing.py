@@ -34,9 +34,16 @@ def run_scenario(args, use_rl_throttle=False, model_path=None, client=None):
         agent = BehaviorAgent(world.player, behavior=args.behavior)
         agent.follow_speed_limits(True)
 
-        # Fixed start and end points
-        start_point = carla.Transform(carla.Location(x=-13.6, y=5.8, z=11), carla.Rotation(yaw=180))
-        end_point = carla.Location(x=-350.015564, y=5.184233, z=2)
+        if args.scenario == 1:
+            # Fixed start and end points
+            start_point = carla.Transform(carla.Location(x=-13.6, y=5.8, z=11), carla.Rotation(yaw=180))
+            end_point = carla.Location(x=-350.015564, y=5.184233, z=2)
+        elif args.scenario == 2:
+            spawn_points = sim_world.get_map().get_spawn_points()
+            start_point = spawn_points[120].location
+            start_point = carla.Transform(start_point, carla.Rotation(yaw=180))
+            end_point = spawn_points[155].location
+
         world.player.set_transform(start_point)
         agent.set_destination(end_point)
         if args.num_cars > 0:
@@ -93,6 +100,10 @@ def run_scenario(args, use_rl_throttle=False, model_path=None, client=None):
                 else: 
                     action = sac_agent.get_action(state, deterministic=True)
                     throttle = float(action[0])
+                    # alpha = 0.7
+                    # smoothed_throttle = alpha * throttle + (1 - alpha) * world.previous_throttle 
+                    # throttle = smoothed_throttle
+
                 if control.brake > 0.0: # Assume if user is braking, his leg is only on the brake pedal
                     throttle = 0.0
                 control.throttle = throttle
@@ -133,22 +144,24 @@ def test_model(args, model_path):
         pygame.font.init()
         client = carla.Client(args.host, args.port)
         client.set_timeout(60.0)
-        result = run_scenario(args, use_rl_throttle=True, model_path=model_path, client=client)
-        if result is None:
-            print("RL scenario cancelled by user.")
-            os._exit(0)
-        fuel_rl, time_rl, dist_rl = result
+        if model_path:
+            result = run_scenario(args, use_rl_throttle=True, model_path=model_path, client=client)
+            if result is None:
+                print("RL scenario cancelled by user.")
+                os._exit(0)
+            fuel_rl, time_rl, dist_rl = result
+            print(f"RL Model:     Fuel consumed = {fuel_rl:.2f} mg, Time = {time_rl:.2f} s, Distance = {dist_rl:.2f} m, Fuel/Distance = {fuel_rl/dist_rl if dist_rl > 0 else float('inf'):.2f} mg/m")
 
-        print("Running Behavirol Agent scenario...")
-        result = run_scenario(args, use_rl_throttle=False, client=client)
-        if result is None:
-            print("Behavioral Agent scenario cancelled by user.")
-            os._exit(0)
-        fuel_basic, time_basic, dist_basic = result
+        else:
+            print("Running Behavirol Agent scenario...")
+            result = run_scenario(args, use_rl_throttle=False, client=client)
+            if result is None:
+                print("Behavioral Agent scenario cancelled by user.")
+                os._exit(0)
+            fuel_basic, time_basic, dist_basic = result
+            print(f"Behavioral Agent:  Fuel consumed = {fuel_basic:.2f} mg, Time = {time_basic:.2f} s, Distance = {dist_basic:.2f} m, Fuel/Distance = {fuel_basic/dist_basic if dist_basic > 0 else float('inf'):.2f} mg/m")
+
         pygame.quit()
-        print("\n=== Comparison ===")
-        print(f"RL Model:     Fuel consumed = {fuel_rl:.2f} mg, Time = {time_rl:.2f} s, Distance = {dist_rl:.2f} m, Fuel/Distance = {fuel_rl/dist_rl if dist_rl > 0 else float('inf'):.2f} mg/m")
-        print(f"Behavioral Agent:  Fuel consumed = {fuel_basic:.2f} mg, Time = {time_basic:.2f} s, Distance = {dist_basic:.2f} m, Fuel/Distance = {fuel_basic/dist_basic if dist_basic > 0 else float('inf'):.2f} mg/m")
         os._exit(0)
     except KeyboardInterrupt:
         print('\nTest cancelled by user. Bye!')

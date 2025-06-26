@@ -70,8 +70,8 @@ def main():
     argparser.add_argument(
         '--model-path',
         type=str,
-        default='models/FuelOptimizer__1749141785.model',
-        help='Path to trained RL model (default: models/FuelOptimizer__1749141785.model)'
+        default=None,
+        help='Path to trained RL model '
     )
     argparser.add_argument(
         '--num-cars',
@@ -86,6 +86,11 @@ def main():
         '--socket',
         action='store_true',
         help='Run simulation and serve data via TCP socket')
+    argparser.add_argument(
+        '--scenario',
+        type=int,
+        default=1,
+        help='choose the scenario to run (default: 1)')
 
     args = argparser.parse_args()
     args.width, args.height = [int(x) for x in args.res.split('x')]
