@@ -54,13 +54,13 @@ class World(object):
         cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
 
         # Instead of getting a random blueprint, specifically get the Tesla
-        blueprint = self.world.get_blueprint_library().find('vehicle.tesla.model3')
+        blueprint = self.world.get_blueprint_library().find('vehicle.chevrolet.impala')
         
         # Set color if desired
         if blueprint.has_attribute('color'):
             blueprint.set_attribute('color', '0,0,0') # Black Tesla
         
-        blueprint.set_attribute('role_name', 'hero')
+        blueprint.set_attribute('role_name', 'carla_driver')
 
         # Spawn the player.
         if self.player is not None:

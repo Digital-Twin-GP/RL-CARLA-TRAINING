@@ -91,6 +91,11 @@ def main():
         type=int,
         default=1,
         help='choose the scenario to run (default: 1)')
+    argparser.add_argument(
+        '--mode',
+        type=int,
+        default=0,
+        help='choose the vehicle mode (0: normal, 1: Cautious, 2: Moderate, 3: Agressive)')
 
     args = argparser.parse_args()
     args.width, args.height = [int(x) for x in args.res.split('x')]

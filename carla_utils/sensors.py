@@ -219,10 +219,7 @@ class CameraManager(object):
                 buf = io.BytesIO()
                 pil_img.save(buf, format='JPEG')
                 img_bytes = buf.getvalue()
-                encoded_bytes = base64.b64encode(img_bytes)
-                encoded_list = list(encoded_bytes)[:1440000]
-                padded_list = encoded_list + [0] * (1440000 - len(encoded_list))
-                self.last_image_b64 = padded_list
+                self.last_image_b64 = base64.b64encode(img_bytes).decode('utf-8')
             except Exception as e:
                 self.last_image_b64 = None
 
