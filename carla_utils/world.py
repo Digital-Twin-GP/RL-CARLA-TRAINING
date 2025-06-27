@@ -53,10 +53,10 @@ class World(object):
         cam_index = self.camera_manager.index if self.camera_manager is not None else 0
         cam_pos_id = self.camera_manager.transform_index if self.camera_manager is not None else 0
 
-        # Instead of getting a random blueprint, specifically get the Tesla
+        
         blueprint = self.world.get_blueprint_library().find('vehicle.chevrolet.impala')
         
-        # Set color if desired
+        
         if blueprint.has_attribute('color'):
             blueprint.set_attribute('color', '0,0,0') # Black Tesla
         
@@ -146,7 +146,9 @@ class World(object):
         current_location = self.player.get_location()
         if self.previous_location:
             self.distance_traveled += self.previous_location.distance(current_location)
+            self.distance_traveled_tick = self.previous_location.distance(current_location)   # Convert to km
         self.previous_location = current_location
+        self.previous_throttle = self.player.get_control().throttle
 
         # Print stats
         # print(f"Speed: {self.current_velocity:.2f} km/h | "

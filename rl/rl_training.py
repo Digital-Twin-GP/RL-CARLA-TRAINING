@@ -2,6 +2,7 @@ import os
 import time
 import random
 import numpy as np
+from carla_utils import world
 import pygame
 import carla
 from threading import Thread
@@ -90,13 +91,21 @@ def rl_training_loop(args):
         while episode <= EPISODES:
             total_fuel_consumed = 0
             episode_reward = 0
+
+            total_reward_f_econ = 0.0
+            total_reward_kmh = 0.0
+            total_reward_b_ac = 0.0
+            total_reward_t_sp = 0.0
+            
             step = 1
             done = False
             collision_happened = False
             episode_transitions = []
             episode_distance_traveled = 0.0
-
+            world.cumulative_fuel = 0.0
+            world.distance_traveled = 0.0
             world.player.apply_control(carla.VehicleControl(throttle=0.0, brake=0.0))
+            world.previous_location = world.player.get_location() 
             clock = pygame.time.Clock()
 
             # Get initial state: [speed, acceleration]
@@ -168,11 +177,9 @@ def rl_training_loop(args):
                 total_fuel_consumed += fuel_consumed
 
                 # Calculate distance traveled in this step
-                d_trv = world.previous_location.distance(world.player.get_location()) 
-                world.previous_location = world.player.get_location()
-
+                d_trv= world.distance_traveled_tick 
                 # Calculate F_econ (avoid division by zero)
-                f_econ = d_trv / fuel_consumed if fuel_consumed > 0 else 0.0
+                f_econ = d_trv / fuel_consumed if fuel_consumed > 0 else 0.0 #m/mg
 
                 # Get brake value
                 control = world.player.get_control()
@@ -186,7 +193,11 @@ def rl_training_loop(args):
                     print("Collision detected! Neglecting episode.")
                     break  # Do not add this step to transitions, do not update anything
                 else:
-                    reward = (f_econ + kmh) - (b_ac + t_sp)
+                    f_econ_reward= f_econ * 1
+                    kmh_reward = kmh * 1
+                    b_ac_reward = b_ac * 1
+                    t_sp_reward = t_sp * 1
+                    reward = (f_econ_reward + kmh_reward) - (b_ac_reward + t_sp_reward)
 
                 if episode_start + SECONDS_PER_EPISODE < time.time():
                     done = True
@@ -194,6 +205,10 @@ def rl_training_loop(args):
 
                 episode_reward += reward
                 episode_distance_traveled += d_trv
+                total_reward_f_econ += f_econ_reward
+                total_reward_kmh += kmh_reward
+                total_reward_b_ac += b_ac_reward
+                total_reward_t_sp += t_sp_reward
 
                 # Buffer the transition
                 if args.dqn:
@@ -206,6 +221,7 @@ def rl_training_loop(args):
 
                 if done or agent_nav.done():
                     print(f"Episode {episode} finished after {step} steps with reward: {episode_reward:.2f}, fuel consumed: {total_fuel_consumed:.2f} L")
+                    print(f"F_econ reward: {total_reward_f_econ:.2f} m/mg, Speed Reward: {total_reward_kmh:.2f} km/h, Brake Reward: -{total_reward_b_ac:.2f}, Time reward: -{total_reward_t_sp:.2f} s")
                     break
             
             world.restart(args)
@@ -273,16 +289,22 @@ def rl_training_loop(args):
 
         agent_rl.terminate = True
         trainer_thread.join()
-        if args.dqn:
-            agent_rl.model.save(f'models/{MODEL_NAME}__{int(time.time())}.model')
-        else:
-            agent_rl.actor.save(f'models/{MODEL_NAME}__{int(time.time())}.model')
-
-        world.destroy()
-        pygame.quit()
-    
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
+    except Exception as e:
+        print(f"Error occurred: {e}")
+    finally:
+        # Save model if agent_rl exists
+        if agent_rl is not None:
+            try:
+                if args.dqn:
+                    agent_rl.model.save(f'models/{MODEL_NAME}__{int(time.time())}.model')
+                else:
+                    agent_rl.actor.save(f'models/{MODEL_NAME}__{int(time.time())}.model')
+                print("Model saved on exit.")
+            except Exception as save_e:
+                print(f"Failed to save model: {save_e}")
+        # Clean up world and pygame
         try:
             if world is not None:
                 world.destroy()

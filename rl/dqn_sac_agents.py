@@ -26,7 +26,6 @@ class ModifiedTensorBoard(TensorBoard):
         super().set_model(model)  # Call the parent class's set_model method
 
     # Overrided, saves logs with our step number
-    # (otherwise every .fit() will start writing from 0th step)
     def on_epoch_end(self, epoch, logs=None):
         self.update_stats(**logs)
 
@@ -179,7 +178,7 @@ class SACAgent:
         x = Dense(64, activation='relu')(x)
         q = Dense(1, activation='linear')(x)
         model = Model([state_input, action_input], q)
-        model.compile(optimizer=Adam(learning_rate=0.0003), loss="mse")  # <-- ADD THIS LINE
+        model.compile(optimizer=Adam(learning_rate=0.0003), loss="mse")  
         return model
 
     def get_action(self, state, deterministic=False):
@@ -199,7 +198,7 @@ class SACAgent:
         self.replay_memory.append(transition)
 
     def get_qs(self, state):
-        # For compatibility, return the actor's mean action (mu) for the given state
+        # return the actor's mean action (mu) for the given state
         state = np.array(state).reshape(1, -1)
         mu, _ = self.actor(state)
         return mu.numpy()[0]

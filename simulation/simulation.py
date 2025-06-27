@@ -48,7 +48,7 @@ def game_loop(args):
 
         # Set the agent destination
         spawn_points = world.map.get_spawn_points()
-        destination = carla.Location(x=-360.015564, y=5.184233, z=2) # Town04
+        destination = carla.Location(x=-360.015564, y=5.184233, z=2) 
         agent.set_destination(destination)
 
         if args.num_cars > 0:
