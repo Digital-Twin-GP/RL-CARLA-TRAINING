@@ -19,7 +19,7 @@ collision_flag = False
 collision_flag_counter = 0
 
    
-def collect_step_data(world, args):
+def collect_step_data(world, args, start_time=None):
     player = world.player
     control = player.get_control()
     location = player.get_location()
@@ -70,7 +70,7 @@ def collect_step_data(world, args):
             "map": world.map.name,
             "speed_limit": getattr(speed_limit, 'current_speed_limit', None),
             "num_vehicles": len(vehicles),
-            "simulation_time": getattr(world.hud, 'simulation_time', None),
+            "simulation_time": time.time() - start_time,
         },
         "metrics": {
             "fuel_consumed": getattr(world, 'cumulative_fuel', None),
@@ -228,7 +228,7 @@ def run_scenario(args, use_rl_throttle=False, model_path=None, client=None):
 
             # If client is connected, send data
             if client_conn is not None:
-                data = collect_step_data(world, args)
+                data = collect_step_data(world, args, start_time=start_time)
                 try:
                     client_conn.sendall((json.dumps(data) + "\n").encode())
                 except (BlockingIOError, BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
